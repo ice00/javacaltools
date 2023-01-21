@@ -558,7 +558,7 @@ public class CalendarPanel extends JPanel implements MouseWheelListener {
 	 * default behavior where the user can scroll indefinitely and the UI will
 	 * keep adding weeks to the display.
 	 *
-	 * @param firstDate
+	 * @param absoluteStartDate firstDate
 	 */
 	public void setAbsoluteStartDay(Calendar absoluteStartDate) {
 		absoluteStart = (Calendar) absoluteStartDate.clone();
@@ -584,7 +584,7 @@ public class CalendarPanel extends JPanel implements MouseWheelListener {
 	 * the default behavior where the user can scroll indefinitely and the UI
 	 * will keep adding weeks to the display.
 	 *
-	 * @param firstDate
+	 * @param absoluteEndDate firstDate
 	 */
 	public void setAbsoluteEndDay(Calendar absoluteEndDate) {
 		absoluteEnd = (Calendar) absoluteEndDate.clone();
@@ -768,14 +768,14 @@ public class CalendarPanel extends JPanel implements MouseWheelListener {
 		this.cellHeight = (double) (this.lastHeight - this.headerHeight) / (double) numWeeksToDisplay;
 
 		columnX = new int[7];
-		rowY = new int[5];
+		rowY = new int[numWeeksToDisplay];
 
-		for (int col = 0; col < 7; col++) {
+		for (int col = 0; col < columnX.length; col++) {
 			double x = this.cellWidth * (double) col;
 			columnX[col] = (int) Math.floor(x);
 		}
 
-		for (int row = 0; row < 5; row++) {
+		for (int row = 0; row < rowY.length; row++) {
 			double y = this.cellHeight * (double) row;
 			rowY[row] = this.headerHeight + (int) Math.floor(y);
 		}
@@ -839,9 +839,9 @@ public class CalendarPanel extends JPanel implements MouseWheelListener {
 
 		// Draw header
 		g.setFont(headerFont);
-		for (int i = 0; i < 7; i++) {
+		for (int i = 0; i < columnX.length; i++) {
 			g.setColor(this.headerBackground);
-			g.fillRect(columnX[i], 0, i < 6 ? columnX[i + 1] - columnX[i] : (int) cellWidth, headerHeight);
+			g.fillRect(columnX[i], 0, i < columnX.length-1 ? columnX[i + 1] - columnX[i] : (int) cellWidth, headerHeight);
 			String text = weekdays[(firstDayOfWeek + i) % 7];
 			int xOffset = (int) Math
 					.floor((this.cellWidth - (double) g.getFontMetrics(headerFont).stringWidth(text)) / (double) 2);
@@ -852,12 +852,12 @@ public class CalendarPanel extends JPanel implements MouseWheelListener {
 		// Draw grid
 		g.setColor(gridColor);
 		int maxX = columnX[6] + (int) this.cellWidth;
-		int maxY = rowY[4] + (int) this.cellHeight;
+		int maxY = rowY[rowY.length-1] + (int) this.cellHeight;
 		g.drawRect(0, 0, maxX, maxY);
-		for (int wday = 1; wday < 7; wday++) {
+		for (int wday = 1; wday < columnX.length; wday++) {
 			g.drawLine(columnX[wday], 0, columnX[wday], maxY);
 		}
-		for (int row = 0; row < 5; row++) {
+		for (int row = 0; row < rowY.length; row++) {
 			g.drawLine(0, rowY[row], maxX, rowY[row]);
 		}
 
@@ -868,9 +868,9 @@ public class CalendarPanel extends JPanel implements MouseWheelListener {
 		c.setTimeInMillis(startDate.getTimeInMillis());
 		g.setFont(eventFont);
 		for (int week = 0; week < numWeeksToDisplay; week++) {
-			for (int col = 0; col < 7; col++) {
+			for (int col = 0; col < columnX.length; col++) {
 				int w = (col < 6) ? columnX[col + 1] - columnX[col] : (int) cellWidth;
-				int h = (week < 4) ? rowY[week + 1] - rowY[week] : (int) cellHeight;
+				int h = (week < numWeeksToDisplay-1) ? rowY[week + 1] - rowY[week] : (int) cellHeight;
 				boolean includeMonthName = c.get(Calendar.DAY_OF_MONTH) == 1 || (week == 0 && col == 0);
 				Date d = new Date(c.get(Calendar.YEAR), c.get(Calendar.MONTH) + 1, c.get(Calendar.DAY_OF_MONTH));
 				this.displayedDates.add(new DisplayedDate(d, new Rectangle(columnX[col], rowY[week], w, h)));
@@ -1093,7 +1093,8 @@ public class CalendarPanel extends JPanel implements MouseWheelListener {
 				// there are too many events to fit in the given space, we will
 				// have to
 				// use more than one column.
-				int visibleRows = (h - fm.getHeight()) / (fm.getHeight() + (1 + CELL_MARGIN));
+                                // At least we must have one row
+				int visibleRows = Math.max((h - fm.getHeight()) / (fm.getHeight() + (1 + CELL_MARGIN)),1);
 				int cols = 1;
 				while (cols * visibleRows < events.size())
 					cols++;
